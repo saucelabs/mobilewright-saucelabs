@@ -1,0 +1,69 @@
+{
+  "name": "@saucelabs/mobilewright-driver",
+  "version": "0.0.1",
+  "description": "Sauce Labs driver for Mobilewright",
+  "keywords": [
+    "mobilewright",
+    "saucelabs",
+    "mobile",
+    "testing",
+    "ios",
+    "android"
+  ],
+  "homepage": "https://github.com/saucelabs/mobilewright-saucelabs#readme",
+  "license": "Apache-2.0",
+  "author": "Sauce Labs",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "tsc --noEmit -p tsconfig.json && eslint .",
+    "test": "playwright test",
+    "prepack": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saucelabs/mobilewright-saucelabs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/saucelabs/mobilewright-saucelabs/issues"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "adm-zip": "^0.6.1",
+    "debug": "^4.4.3",
+    "ws": "^8.22.0"
+  },
+  "peerDependencies": {
+    "@mobilewright/protocol": "0.0.66",
+    "mobilewright": "0.0.66"
+  },
+  "devDependencies": {
+    "@mobilewright/protocol": "^0.0.66",
+    "@playwright/test": "1.63.0",
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "@types/debug": "^4.1.13",
+    "@types/node": "^22.20.5",
+    "@types/ws": "^8.18.2",
+    "@typescript-eslint/eslint-plugin": "^8.71.2",
+    "@typescript-eslint/parser": "^8.71.2",
+    "eslint": "^10.13.0",
+    "mobilewright": "^0.0.66",
+    "typescript": "^5.9.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "mobilewright-saucelabs-e2e-sauce-demo-app",
+  "private": true,
+  "description": "End-to-end tests of @saucelabs/mobilewright-driver with the Sauce Labs demo app (My Demo App)",
+  "type": "module",
+  "scripts": {
+    "test": "mobilewright test",
+    "test:android": "mobilewright test --project android",
+    "test:ios": "mobilewright test --project ios"
+  },
+  "dependencies": {
+    "@mobilewright/test": "^0.0.66",
+    "mobilewright": "^0.0.66"
+  }
+}

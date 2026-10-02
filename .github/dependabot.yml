@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # Mobilewright packages move together.
+      mobilewright:
+        patterns: ['mobilewright', '@mobilewright/*']
+      dev-dependencies:
+        dependency-type: development
+        exclude-patterns: ['mobilewright', '@mobilewright/*']
+
+  - package-ecosystem: npm
+    directories: [/e2e/sauce-demo-app, /e2e/mobilewright-demo-app]
+    schedule:
+      interval: weekly
+    groups:
+      mobilewright:
+        patterns: ['mobilewright', '@mobilewright/*']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

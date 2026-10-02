@@ -1,0 +1,32 @@
+name: Latest Mobilewright
+
+# Checks the driver against the newest mobilewright and @mobilewright/protocol, so a release that changes the driver
+# interface shows up here before users hit it. The driver supports one pinned version, so this can fail until it
+# moves to the new one.
+on:
+  schedule:
+    - cron: '0 6 * * *' # daily, 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Unit (latest Mobilewright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save mobilewright@latest @mobilewright/protocol@latest
+      # Shows the versions under test; npm reports them as "invalid" when they differ from the pinned version.
+      - run: npm ls mobilewright @mobilewright/protocol || true
+      # A new required driver method fails the type check here.
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test

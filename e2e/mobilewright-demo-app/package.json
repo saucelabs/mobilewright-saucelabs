@@ -1,0 +1,16 @@
+{
+  "name": "mobilewright-saucelabs-e2e-mobilewright-demo-app",
+  "private": true,
+  "description": "End-to-end tests of @saucelabs/mobilewright-driver with Mobilewright's demo app (Playground)",
+  "type": "module",
+  "scripts": {
+    "test": "mobilewright test",
+    "test:android": "mobilewright test --project android",
+    "test:ios": "mobilewright test --project ios"
+  },
+  "dependencies": {
+    "@mobilewright/test": "^0.0.66",
+    "@playwright/test": "1.63.0",
+    "mobilewright": "^0.0.66"
+  }
+}

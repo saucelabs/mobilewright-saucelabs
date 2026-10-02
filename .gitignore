@@ -1,0 +1,11 @@
+node_modules
+dist
+.DS_Store
+.idea/
+test-results/
+playwright-report/
+mobilewright-report/
+*.tgz
+.env
+.env.*
+results/

@@ -1,0 +1,142 @@
+name: End-to-end
+
+# Runs on Sauce Labs real devices, so it uses device time and the account's concurrency.
+# The credentials are in the `sauce` environment (SAUCE_USERNAME, SAUCE_ACCESS_KEY). Pull requests from forks
+# can't read them, so the jobs are skipped there.
+on:
+  pull_request:
+  schedule:
+    - cron: '0 3 * * *' # daily, 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      region:
+        description: Sauce Labs data center
+        type: choice
+        default: us-west-1
+        options: [us-west-1, us-east-4, eu-central-1, asia-south-2]
+      sauce-connect:
+        description: Run the Sauce Connect tests (the account must allow Sauce Connect on public devices)
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# One run at a time, across all branches and pull requests: a run uses up to 6 of the account's 10 devices, so two
+# would compete for them. A run never cancels another; GitHub keeps one run waiting and replaces it with a newer one.
+concurrency:
+  group: e2e
+  cancel-in-progress: false
+
+jobs:
+  integration:
+    name: Integration (${{ matrix.platform }})
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    # A run takes 6–9 minutes; a hung one is stopped (and its sessions closed) instead of holding devices.
+    timeout-minutes: 15
+    environment: sauce
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [android, ios]
+    env:
+      SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
+      SAUCE_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY }}
+      SAUCE_REGION: ${{ inputs.region || 'us-west-1' }}
+      SAUCE_INTEGRATION: '1'
+      SAUCE_PLATFORM: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          cache: npm
+      - run: npm ci
+      - name: Integration tests
+        run: |
+          # Without Sauce Connect on public devices, skip the test that needs it.
+          if [ '${{ github.event_name != 'workflow_dispatch' || inputs.sauce-connect }}' = 'true' ]; then
+            npx playwright test src/integration.test.ts --retries=1 --reporter=list,junit
+          else
+            npx playwright test src/integration.test.ts --retries=1 --reporter=list,junit --grep-invert 'Sauce Connect'
+          fi
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: results/integration-${{ matrix.platform }}.xml
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: integration-${{ matrix.platform }}
+          path: |
+            test-results/
+            results/
+          if-no-files-found: ignore
+
+  e2e:
+    name: e2e (${{ matrix.suite }}, ${{ matrix.platform }})
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    # A run takes 6–9 minutes; a hung one is stopped (and its sessions closed) instead of holding devices.
+    timeout-minutes: 15
+    environment: sauce
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [sauce-demo-app, mobilewright-demo-app]
+        # One process per platform: one run with both stalls Mobilewright's device pool.
+        platform: [android, ios]
+    env:
+      SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
+      SAUCE_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY }}
+      SAUCE_REGION: ${{ inputs.region || 'us-west-1' }}
+      E2E_SAUCE_CONNECT: ${{ (github.event_name != 'workflow_dispatch' || inputs.sauce-connect) && '1' || '0' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            e2e/${{ matrix.suite }}/package-lock.json
+      - name: Build the driver
+        run: |
+          npm ci
+          npm pack
+      - name: Install the suite with the driver
+        working-directory: e2e/${{ matrix.suite }}
+        run: |
+          npm ci
+          npm install --no-save ../../saucelabs-mobilewright-driver-*.tgz
+      - name: Run
+        working-directory: e2e/${{ matrix.suite }}
+        run: npx mobilewright test --project ${{ matrix.platform }}
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: e2e-${{ matrix.suite }}-${{ matrix.platform }}
+          path: |
+            e2e/${{ matrix.suite }}/mobilewright-report/
+            e2e/${{ matrix.suite }}/test-results/
+            e2e/${{ matrix.suite }}/results/
+          if-no-files-found: ignore
+
+  results:
+    name: Results
+    # After every job, also when some failed; the summary is at the bottom of the run's page.
+    needs: [integration, e2e]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: '*'
+          path: artifacts
+      - uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: artifacts/**/*.xml
+          check_name: End-to-end test results
+          # Only the run's summary page: no check run or pull request comment, so no write permissions needed.
+          check_run: false
+          comment_mode: off
