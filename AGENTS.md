@@ -77,9 +77,11 @@ The e2e suites' variables (`E2E_WORKERS`, `SAUCE_REGION`, app overrides) are in 
 - Comments explain why, often with the device and OS version where a behavior was seen.
 - New driver behavior gets unit tests next to the existing ones (`src/driver.test.ts` has the fakes:
   `createFakeRest`, `createDriverWithSession`, `withoutRealSleeps`).
-- When Mobilewright adds a required method to `MobilewrightSession`, implement it (or throw a clear "not
-  supported"). The driver supports one Mobilewright version (pinned in `peerDependencies`, since releases
-  often change the driver interface): move it and the dev dependencies to the new version together.
+- When Mobilewright adds a required method to `MobilewrightSession`, implement it (or throw a clear "not supported").
+  The driver supports one Mobilewright version (pinned in `peerDependencies`, since releases often change the driver
+  interface): move it and the dev dependencies to the new version together. `@playwright/test`, `@types/node` and
+  `typescript` stay on the versions Mobilewright uses (its root `package.json` and lockfile); Dependabot ignores them,
+  so move them in the same change when Mobilewright moves them.
 
 [managing-user-info]: https://docs.saucelabs.com/basics/acct-team-mgmt/managing-user-info/
 [data-center-endpoints]: https://docs.saucelabs.com/basics/data-center-endpoints/
