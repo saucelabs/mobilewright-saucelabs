@@ -65,6 +65,8 @@ The e2e suites' variables (`E2E_WORKERS`, `SAUCE_REGION`, app overrides) are in 
   The Sauce demo e2e suite starts a tunnel too (`E2E_SAUCE_CONNECT=0` turns it off).
 - **Pages through Sauce Connect:** devices don't send `localhost` or `127.0.0.1` through the tunnel, so tests use
   the made-up host `mobilewright.test`, served by the test as sc's upstream proxy (ARCHITECTURE.md explains why).
+- **Markdown-only changes skip CI:** pull requests and pushes that only change `.md` files (READMEs, AGENTS.md,
+  ARCHITECTURE.md) don't run Test or End-to-end. A change that also touches code runs everything.
 - **Rebuild before real-device runs:** the e2e suites use the linked `dist/`. Run
   `npm link @saucelabs/mobilewright-driver` again after any `npm install` in a suite.
 - The e2e configs raise Mobilewright's 5s default timeouts (meant for local devices) to 30s, so locators and
@@ -77,9 +79,11 @@ The e2e suites' variables (`E2E_WORKERS`, `SAUCE_REGION`, app overrides) are in 
 - Comments explain why, often with the device and OS version where a behavior was seen.
 - New driver behavior gets unit tests next to the existing ones (`src/driver.test.ts` has the fakes:
   `createFakeRest`, `createDriverWithSession`, `withoutRealSleeps`).
-- When Mobilewright adds a required method to `MobilewrightSession`, implement it (or throw a clear "not
-  supported"). The driver supports one Mobilewright version (pinned in `peerDependencies`, since releases
-  often change the driver interface): move it and the dev dependencies to the new version together.
+- When Mobilewright adds a required method to `MobilewrightSession`, implement it (or throw a clear "not supported").
+  The driver supports one Mobilewright version (pinned in `peerDependencies`, since releases often change the driver
+  interface): move it and the dev dependencies to the new version together. `@playwright/test`, `@types/node` and
+  `typescript` stay on the versions Mobilewright uses (its root `package.json` and lockfile); Dependabot ignores them,
+  so move them in the same change when Mobilewright moves them.
 
 [managing-user-info]: https://docs.saucelabs.com/basics/acct-team-mgmt/managing-user-info/
 [data-center-endpoints]: https://docs.saucelabs.com/basics/data-center-endpoints/

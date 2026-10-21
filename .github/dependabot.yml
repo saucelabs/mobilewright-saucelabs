@@ -11,6 +11,11 @@ updates:
       dev-dependencies:
         dependency-type: development
         exclude-patterns: ['mobilewright', '@mobilewright/*']
+    # These tools follow the versions Mobilewright uses, so they move by hand when Mobilewright moves them.
+    ignore:
+      - dependency-name: '@playwright/test'
+      - dependency-name: '@types/node'
+      - dependency-name: typescript
 
   - package-ecosystem: npm
     directories: [/e2e/sauce-demo-app, /e2e/mobilewright-demo-app]
