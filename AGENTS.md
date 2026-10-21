@@ -35,7 +35,7 @@ Integration test variables:
 | `SAUCE_PLATFORM` | `ios` | `ios` or `android` |
 | `SAUCE_REGION` | `us-west-1` | `us-west-1`, `us-east-4`, `eu-central-1` or `asia-south-2` ([data centers][data-center-endpoints]) |
 | `SAUCE_DEVICE_NAME` | a Pixel / an iPhone, no foldables or `_free` devices | Device name regex, matched anywhere in the name |
-| `SAUCE_OS_VERSION` | `>=13` / `>=17` | OS version expression; the demo app needs iOS 16.6+, `clearText()` Android 13+ |
+| `SAUCE_OS_VERSION` | `>=13` / `>=17` | OS version expression; the demo app needs iOS 16.6+, `fill()` Android 13+ |
 | `SAUCE_TEST_APP` | Sauce Labs' demo app | App the suite installs (a URL, path or `storage:` ref); the `clearAppData` test needs the default |
 | `SAUCE_IOS_WDA_STORAGE_REF` | — | A custom WebDriverAgent ([private devices][private-only] only) |
 

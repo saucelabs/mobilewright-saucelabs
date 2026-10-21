@@ -166,13 +166,13 @@ buttons jump while the keyboard re-appears), and a page source read in that mome
 second later. Mobilewright re-reads the screen right after typing to find a prompt's OK button, so `typeText()` returns
 only when two reads of the focused element's rect agree (up to 3s).
 
-**Android `clearText()` needs Android 13.** The socket only sends single keys (no select-all), and
+**Android `fill()` needs Android 13.** The socket only sends single keys (no select-all), and
 `input keycombination` arrived in API 33. Older devices fail with a clear error instead of silently not clearing.
 The clear starts with `KEYCODE_MOVE_END`, which makes the keyboard finish the word being typed: while a word is open
 (its suggestions showing), Gboard ignores select-all.
 
 **iOS waits for focus after a tap.** Focus can land a moment after the tap that gives it (iOS 27), so the driver looks
-for the focused element (`element/active`, then `hasKeyboardFocus`) for up to 3s before `clearText()` gives up.
+for the focused element (`element/active`, then `hasKeyboardFocus`) for up to 3s before `fill()` gives up.
 
 **iOS element visibility comes from the frame,** not WDA's `visible` attribute, which marks some on-screen
 SwiftUI elements invisible. An element on screen with a size counts as visible.

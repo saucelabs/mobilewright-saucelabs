@@ -9,7 +9,7 @@
     "test:ios": "mobilewright test --project ios"
   },
   "dependencies": {
-    "@mobilewright/test": "^0.0.66",
-    "mobilewright": "^0.0.66"
+    "@mobilewright/test": "^0.0.67",
+    "mobilewright": "^0.0.67"
   }
 }

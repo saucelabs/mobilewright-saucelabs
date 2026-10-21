@@ -205,7 +205,7 @@ test.describe('WdaClient.clearActiveElement()', () => {
 
   test('explains when no element has focus', async () => {
     const { rest } = createElementRest({ active: { value: null }, predicate: { value: null } });
-    await expect(new WdaClient(rest, 's1').clearActiveElement()).rejects.toThrow(/no focused element to clear/);
+    await expect(new WdaClient(rest, 's1').clearActiveElement()).rejects.toThrow(/no focused text field/);
   });
 });
 
