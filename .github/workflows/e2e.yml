@@ -107,9 +107,13 @@ jobs:
           npm pack
       - name: Install the suite with the driver
         working-directory: e2e/${{ matrix.suite }}
+        # The suite depends on the published driver, like a user project; the driver built from this commit replaces
+        # it. During a Mobilewright upgrade the published driver still requires the old version, hence
+        # --legacy-peer-deps.
         run: |
-          npm ci
-          npm install --no-save ../../saucelabs-mobilewright-driver-*.tgz
+          npm ci --legacy-peer-deps
+          npm install --no-save --legacy-peer-deps ../../saucelabs-mobilewright-driver-*.tgz
+          node -p "'driver from ' + require('./node_modules/.package-lock.json').packages['node_modules/@saucelabs/mobilewright-driver'].resolved"
       - name: Run
         working-directory: e2e/${{ matrix.suite }}
         run: npx mobilewright test --project ${{ matrix.platform }}

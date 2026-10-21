@@ -1,12 +1,14 @@
 # End-to-end tests
 
 Mobilewright test suites that run through `mobilewright test` (CLI, `@mobilewright/test` fixtures, device
-pool) on Sauce Labs real devices, using this driver. Each suite is its own npm project:
+pool) on Sauce Labs real devices, using this driver. Each suite is its own npm project, and also an example for users:
+its `package.json` depends on the published `@saucelabs/mobilewright-driver`, and its README explains how to copy it.
+To test this repository's code instead, link or install it as below.
 
 | Directory | App | Tests |
 |---|---|---|
 | [`sauce-demo-app`](sauce-demo-app) | Sauce Labs' demo app, "My Demo App" ([Android][my-demo-app-android], [iOS][my-demo-app-ios]) | catalog, product details, add to cart, a site on this machine through Sauce Connect |
-| [`mobilewright-demo-app`](mobilewright-demo-app) | [Playground][playground], the app Mobilewright's own e2e tests use | home screen, text fields (`fill`, `clear`), controls, web view |
+| [`mobilewright-demo-app`](mobilewright-demo-app) | [Playground][playground], the app Mobilewright's own e2e tests use | home screen, text fields (`fill`, `clear`), controls, alerts and permission prompts, web view |
 
 Each project's `installApps` takes its app straight from the GitHub release: Sauce Labs downloads it when it
 installs the app, nothing is downloaded locally.
@@ -27,8 +29,10 @@ npm link @saucelabs/mobilewright-driver
 ```
 
 `npm link` points the suite at this repository, so `npm run build` in the root is all a driver change needs.
-Run `npm link @saucelabs/mobilewright-driver` again after any `npm install` in a suite: npm removes links
-that aren't in `package.json`.
+Run `npm link @saucelabs/mobilewright-driver` again after any `npm install` in a suite: npm replaces the link with the
+published version from `package.json`. CI does the same with a packed tarball: `npm ci --legacy-peer-deps`, then
+`npm install --no-save --legacy-peer-deps` of the tarball (the flag lets the published driver install while it still
+requires an older Mobilewright than the suite).
 
 The linked driver resolves its own dependencies (`@mobilewright/protocol`, …) from the repository root, not
 from the suite. That's fine while both use the same version (0.0.67). With different versions, error classes
@@ -39,7 +43,7 @@ exactly like a published package, install a packed tarball instead:
 # in the repository root
 npm pack                                   # → saucelabs-mobilewright-driver-<version>.tgz
 # in a suite
-npm install ../../saucelabs-mobilewright-driver-<version>.tgz
+npm install --no-save ../../saucelabs-mobilewright-driver-<version>.tgz
 ```
 
 ## Running

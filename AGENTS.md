@@ -26,6 +26,10 @@ cd e2e/sauce-demo-app && npm install && npm link @saucelabs/mobilewright-driver
 npm run test:android                           # and test:ios
 ```
 
+The e2e suites double as examples for users, so their `package.json` depends on the published driver. `npm link` (or,
+in CI, the packed driver) replaces it with this repository's build; an `npm install` in a suite brings back the
+published one.
+
 Integration test variables:
 
 | Variable | Default | |
