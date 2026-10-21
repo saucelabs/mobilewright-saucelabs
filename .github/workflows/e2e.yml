@@ -2,9 +2,11 @@ name: End-to-end
 
 # Runs on Sauce Labs real devices, so it uses device time and the account's concurrency.
 # The credentials are in the `sauce` environment (SAUCE_USERNAME, SAUCE_ACCESS_KEY). Pull requests from forks
-# can't read them, so the jobs are skipped there.
+# can't read them, so the jobs are skipped there. Pull requests that only touch Markdown (READMEs, AGENTS.md,
+# ARCHITECTURE.md) don't run it.
 on:
   pull_request:
+    paths-ignore: ['**/*.md']
   schedule:
     - cron: '0 3 * * *' # daily, 03:00 UTC
   workflow_dispatch:
