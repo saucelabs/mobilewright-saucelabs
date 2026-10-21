@@ -71,6 +71,15 @@ Requires `mobilewright` 0.0.67, Node.js 22.12 or later, and Android 13 or later 
 
 Each test shows up on the Sauce Labs [Test Results][test-results] page with its video, screenshots and device logs.
 
+## Examples
+
+Two complete projects you can copy, both run in this repository's CI:
+
+- [Sauce Labs demo app](e2e/sauce-demo-app): installing an app from a URL, tests for both platforms, and a site on your
+  machine through Sauce Connect.
+- [Mobilewright Playground app](e2e/mobilewright-demo-app): text fields, controls, alerts and permission prompts, and
+  web views.
+
 ## Options
 
 All options are optional.
