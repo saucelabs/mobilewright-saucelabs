@@ -65,6 +65,8 @@ The e2e suites' variables (`E2E_WORKERS`, `SAUCE_REGION`, app overrides) are in 
   The Sauce demo e2e suite starts a tunnel too (`E2E_SAUCE_CONNECT=0` turns it off).
 - **Pages through Sauce Connect:** devices don't send `localhost` or `127.0.0.1` through the tunnel, so tests use
   the made-up host `mobilewright.test`, served by the test as sc's upstream proxy (ARCHITECTURE.md explains why).
+- **Markdown-only changes skip CI:** pull requests and pushes that only change `.md` files (READMEs, AGENTS.md,
+  ARCHITECTURE.md) don't run Test or End-to-end. A change that also touches code runs everything.
 - **Rebuild before real-device runs:** the e2e suites use the linked `dist/`. Run
   `npm link @saucelabs/mobilewright-driver` again after any `npm install` in a suite.
 - The e2e configs raise Mobilewright's 5s default timeouts (meant for local devices) to 30s, so locators and
