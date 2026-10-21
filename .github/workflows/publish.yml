@@ -1,0 +1,65 @@
+name: Publish
+
+# Releases a new version by hand: release-it bumps the version, commits and tags it on main, creates the GitHub
+# release and publishes to npm. npm trusts this workflow (trusted publishing), so no npm token is needed, and each
+# version gets provenance.
+on:
+  workflow_dispatch:
+    inputs:
+      releaseType:
+        description: Release type
+        type: choice
+        default: patch
+        options: [patch, minor, major]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
+
+  release:
+    name: Release
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # the version commit, the tag and the GitHub release
+      id-token: write # trusted publishing to npm
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm 11.5.1 or later.
+      - run: npm install -g npm@latest
+      - name: Set up git
+        run: |
+          git config --global user.name "oss-sauce-bot"
+          git config --global user.email "66365630+oss-sauce-bot@users.noreply.github.com"
+      - run: npm ci
+      - name: Release
+        run: npx release-it ${{ inputs.releaseType }} --ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

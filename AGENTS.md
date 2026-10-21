@@ -86,3 +86,13 @@ The e2e suites' variables (`E2E_WORKERS`, `SAUCE_REGION`, app overrides) are in 
 [private-only]: https://docs.saucelabs.com/mobile-apps/real-device-access-api/real-device-access-api-public-and-private-devices/#capabilities
 [managing-concurrency]: https://docs.saucelabs.com/basics/acct-team-mgmt/concurrency/managing-concurrency/
 [sauce-connect-5]: https://docs.saucelabs.com/secure-connections/sauce-connect-5/
+
+## Releasing
+
+Releases go out through the **Publish** workflow (Actions → Publish → Run workflow, pick patch, minor or major). It
+runs the unit tests, then [release-it][release-it] bumps `version`, commits
+`Release vX.Y.Z` to `main`, tags `vX.Y.Z`, creates the GitHub release and publishes to npm with trusted publishing (no
+npm token; configured on the package's npm settings for `publish.yml`). Don't publish by
+hand. To check the steps without releasing: `npx release-it patch --dry-run`.
+
+[release-it]: https://github.com/release-it/release-it

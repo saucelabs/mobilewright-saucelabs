@@ -61,9 +61,26 @@
     "@typescript-eslint/parser": "^8.71.2",
     "eslint": "^10.13.0",
     "mobilewright": "^0.0.66",
+    "release-it": "21.1.1",
     "typescript": "^5.9.3"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "release-it": {
+    "git": {
+      "commitMessage": "Release v${version}",
+      "tagName": "v${version}",
+      "tagAnnotation": "v${version}",
+      "requireBranch": "main"
+    },
+    "github": {
+      "release": true,
+      "releaseName": "v${version}",
+      "autoGenerate": true
+    },
+    "npm": {
+      "skipChecks": true
+    }
   }
 }
