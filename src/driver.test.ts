@@ -461,10 +461,10 @@ test.describe('SauceLabsDriver.longPress()', () => {
   });
 });
 
-test.describe('SauceLabsDriver.clearText()', () => {
+test.describe('SauceLabsDriver.fill()', () => {
   test('on iOS, clears the focused element through WDA and sends no socket keys', async () => {
     const { driver, ioSocket, wda } = createDriverWithSession({ platform: 'ios' });
-    await driver.clearText();
+    await driver.fill('');
 
     expect(wda!.calls.map((c) => c.method)).toEqual(['clearActiveElement']);
     expect(ioSocket.keyCalls).toEqual([]);
@@ -475,8 +475,8 @@ test.describe('SauceLabsDriver.clearText()', () => {
 
   test('on Android, moves to the end, selects all with CTRL+A and deletes, without reading the hierarchy', async () => {
     const { driver, ioSocket, restCalls } = createDriverWithSession({ platform: 'android', restResponses: { executeShellCommand: sdk('33') } });
-    await driver.clearText();
-    await driver.clearText();
+    await driver.fill('');
+    await driver.fill('');
 
     const commands = restCalls.filter((c) => c.method === 'executeShellCommand').map((c) => c.args[1]);
     expect(commands).toEqual([
@@ -487,10 +487,33 @@ test.describe('SauceLabsDriver.clearText()', () => {
     expect(ioSocket.keyCalls).toEqual([]);
   });
 
+  test('with text, clears the field and then types it, on both platforms', async () => {
+    const ios = createDriverWithSession({ platform: 'ios' });
+    await ios.driver.fill('hello');
+    expect(ios.wda!.calls.map((c) => [c.method, ...c.args])).toEqual([['clearActiveElement'], ['typeKeys', 'hello']]);
+
+    const android = createDriverWithSession({ platform: 'android', restResponses: { executeShellCommand: sdk('33') } });
+    await android.driver.fill('hello');
+    const commands = android.restCalls.filter((c) => c.method === 'executeShellCommand').map((c) => c.args[1]);
+    expect(commands.at(-1)).toBe('input keyevent 67');
+    expect(android.ioSocket.keyCalls.join('')).toBe('hello');
+  });
+
+  test('after fill(text), the field reports the new text', async () => {
+    const dump = '<?xml version="1.0"?><hierarchy><node class="android.widget.EditText" text="hello" focused="true" bounds="[0,0][10,10]" /></hierarchy>';
+    const { driver } = createDriverWithSession({
+      platform: 'android',
+      restResponses: { executeShellCommand: async (_s: unknown, cmd: unknown) => (String(cmd).startsWith('getprop') ? '33\n' : String(cmd).startsWith('uiautomator') ? dump : '') },
+    });
+    await driver.fill('hello');
+    const [root] = await driver.getViewHierarchy();
+    expect(root.children![0].value).toBe('hello');
+  });
+
   test('on Android 12 and older, fails clearly instead of silently clearing nothing', async () => {
     const { driver, restCalls } = createDriverWithSession({ platform: 'android', restResponses: { executeShellCommand: sdk('31') } });
 
-    await expect(driver.clearText()).rejects.toThrow(/needs Android 13 or later.*API level 31.*osVersion: '>=13'/);
+    await expect(driver.fill('')).rejects.toThrow(/needs Android 13 or later.*API level 31.*osVersion: '>=13'/);
     expect(restCalls.some((c) => String(c.args[1]).startsWith('input keycombination'))).toBe(false);
   });
 });
@@ -550,36 +573,36 @@ test.describe('SauceLabsDriver.getViewHierarchy() text field values on Android',
   });
 
   test.describe('Android 13-15 (no hint attribute)', () => {
-    test('the focused field reads as empty after clearText(), even though uiautomator reports its hint', async () => {
+    test('the focused field reads as empty after fill(\'\'), even though uiautomator reports its hint', async () => {
       const { driver } = androidDriver(() => dump({ text: 'Search settings' }));
       await driver.tap(50, 45);
-      await driver.clearText();
+      await driver.fill('');
 
       expect((await readField(driver)).value).toBeUndefined();
     });
 
-    test('typing after clearText() reports the typed text', async () => {
+    test('typing after fill(\'\') reports the typed text', async () => {
       let text = 'Search settings';
       const { driver } = androidDriver(() => dump({ text }));
       await driver.tap(50, 45);
-      await driver.clearText();
+      await driver.fill('');
       await driver.typeText('abc');
       text = 'abc';
 
       expect((await readField(driver)).value).toBe('abc');
     });
 
-    test('a tap after clearText() stops treating the focused field as empty, since focus may have moved', async () => {
+    test('a tap after fill(\'\') stops treating the focused field as empty, since focus may have moved', async () => {
       const { driver } = androidDriver(() => dump({ text: 'existing' }));
-      await driver.clearText();
+      await driver.fill('');
       await driver.tap(50, 45);
 
       expect((await readField(driver)).value).toBe('existing');
     });
 
-    test('clearText() only affects the focused field', async () => {
+    test('fill(\'\') only affects the focused field', async () => {
       const { driver } = androidDriver(() => dump({ text: 'other field', focused: false }));
-      await driver.clearText();
+      await driver.fill('');
 
       expect((await readField(driver)).value).toBe('other field');
     });
@@ -1221,7 +1244,7 @@ test.describe('SauceLabsDriver.getViewHierarchy() text field values on iOS', () 
     expect((await driver.getViewHierarchy())[0].value).toBeUndefined();
   });
 
-  test('without a placeholder in the source, the field clearText() cleared (found by its rect) reads as empty', async () => {
+  test('without a placeholder in the source, the field fill(\'\') cleared (found by its rect) reads as empty', async () => {
     const bounds = { x: 0, y: 0, width: 300, height: 44 };
     const { driver } = createDriverWithSession({
       platform: 'ios',
@@ -1230,7 +1253,7 @@ test.describe('SauceLabsDriver.getViewHierarchy() text field values on iOS', () 
         clearActiveElement: bounds,
       },
     });
-    await driver.clearText();
+    await driver.fill('');
     const [cleared, other] = await driver.getViewHierarchy();
 
     expect(cleared.value).toBeUndefined();
@@ -1249,7 +1272,7 @@ test.describe('SauceLabsDriver.getViewHierarchy() text field values on iOS', () 
         clearActiveElement: { x: 16, y: 231, width: 370, height: 47 },
       },
     });
-    await driver.clearText();
+    await driver.fill('');
     const [cleared, next, form] = await driver.getViewHierarchy();
 
     expect(cleared.value).toBeUndefined();
@@ -1257,15 +1280,15 @@ test.describe('SauceLabsDriver.getViewHierarchy() text field values on iOS', () 
     expect(form.value).toBe('whole form');
   });
 
-  test('typing or tapping after clearText() ends the cleared-field rule', async () => {
+  test('typing or tapping after fill(\'\') ends the cleared-field rule', async () => {
     const bounds = { x: 0, y: 0, width: 300, height: 44 };
     const typed = createDriverWithSession({ platform: 'ios', wdaResponses: { getSource: [field('abc')], clearActiveElement: bounds } });
-    await typed.driver.clearText();
+    await typed.driver.fill('');
     await typed.driver.typeText('abc');
     expect((await typed.driver.getViewHierarchy())[0].value).toBe('abc');
 
     const tapped = createDriverWithSession({ platform: 'ios', wdaResponses: { getSource: [field('existing')], clearActiveElement: bounds } });
-    await tapped.driver.clearText();
+    await tapped.driver.fill('');
     await tapped.driver.tap(10, 10);
     expect((await tapped.driver.getViewHierarchy())[0].value).toBe('existing');
   });

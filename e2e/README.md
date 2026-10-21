@@ -31,7 +31,7 @@ Run `npm link @saucelabs/mobilewright-driver` again after any `npm install` in a
 that aren't in `package.json`.
 
 The linked driver resolves its own dependencies (`@mobilewright/protocol`, …) from the repository root, not
-from the suite. That's fine while both use the same version (0.0.66). With different versions, error classes
+from the suite. That's fine while both use the same version (0.0.67). With different versions, error classes
 the device pool checks with `instanceof` (`NoDeviceAvailableError`) wouldn't match. For a setup that behaves
 exactly like a published package, install a packed tarball instead:
 
@@ -81,7 +81,7 @@ needs `openssl` for its certificate.
 
 The configs pick devices accordingly:
 
-- **Android 13 or later** (`osVersion: '>=13'`): the driver's `clearText()` needs it, and fails with a clear
+- **Android 13 or later** (`osVersion: '>=13'`): the driver's `fill()` needs it, and fails with a clear
   message on older devices.
 - **No foldables on Android**: apps there can launch onto the display that isn't shown.
 - **iOS**: Sauce Labs' demo app needs iOS 16.6+, Playground needs iOS 18.6+. On older devices Sauce Labs only

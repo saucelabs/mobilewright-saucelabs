@@ -280,7 +280,7 @@ export class WdaClient {
     for (;;) {
       const id = await this.activeElementIdOnce();
       if (id) return id;
-      if (Date.now() >= deadline) throw new Error('clearText: no focused element to clear — tap a text field first');
+      if (Date.now() >= deadline) throw new Error('fill: no focused text field — tap a text field first');
       await sleep(FOCUS_POLL_MS);
     }
   }

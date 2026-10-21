@@ -20,7 +20,7 @@ const IOS_WDA_STORAGE_REF = process.env['SAUCE_IOS_WDA_STORAGE_REF'];
 // Foldables (apps there can launch onto the display that isn't shown) and free-trial devices (`_free` in the id) are
 // excluded. The patterns only match device ids, since display names have spaces.
 const DEVICE_NAME = process.env['SAUCE_DEVICE_NAME'] ?? (PLATFORM === 'android' ? '^Google_Pixel_(?!.*(Fold|_free))' : '^iPhone_(?!.*_free)');
-// The demo app needs iOS 16.6+, and clearText() Android 13+.
+// The demo app needs iOS 16.6+, and fill() Android 13+.
 const OS_VERSION = process.env['SAUCE_OS_VERSION'] ?? (PLATFORM === 'android' ? '>=13' : '>=17');
 const SETTINGS_APP = PLATFORM === 'android' ? 'com.android.settings' : 'com.apple.Preferences';
 /** Sauce Labs' public demo app (https://github.com/saucelabs/my-demo-app-android, -ios). Override with SAUCE_TEST_APP. */
@@ -283,20 +283,23 @@ test.describe('SauceLabsDriver integration: on one device', () => {
     await expect.poll(() => driver.getOrientation(), { timeout: 30_000 }).toBe('portrait');
   });
 
-  test('clearText empties a focused field, so retyping does not append, and value reports it', async () => {
+  test('fill(\'\') empties a focused field, so retyping does not append, and value reports it', async () => {
     await focusSettingsSearch(driver, session.deviceId);
 
     await driver.typeText('hello123');
     await expectFieldValue(driver, 'hello123', 'after typing hello123');
 
-    await driver.clearText();
-    await expectFieldValue(driver, '', 'after clearText()');
+    await driver.fill('');
+    await expectFieldValue(driver, '', 'after clearing');
 
     await driver.typeText('abc');
     await expectFieldValue(driver, 'abc', 'after retyping abc');
 
-    await driver.clearText();
-    await expectFieldValue(driver, '', 'after second clearText()');
+    await driver.fill('');
+    await expectFieldValue(driver, '', 'after clearing again');
+
+    await driver.fill('replaced');
+    await expectFieldValue(driver, 'replaced', 'after fill(replaced)');
   });
 
   test('clearAppData stops the app, removes its files and leaves it installed', async () => {

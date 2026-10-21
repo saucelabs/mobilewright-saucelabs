@@ -109,7 +109,7 @@ const BUTTON_KEY: Partial<Record<HardwareButton, string>> = {
   APP_SWITCH: 'Sauce_Menu_Key',
 };
 
-// Android key events used by clearText(). `input keycombination` needs Android 13 (API 33) or later.
+// Android key events used by fill() to clear a field. `input keycombination` needs Android 13 (API 33) or later.
 const KEYCODE_CTRL_LEFT = 113;
 const KEYCODE_A = 29;
 const KEYCODE_DEL = 67;
@@ -165,7 +165,7 @@ interface ActiveSession {
   reportedTest?: { name: string; jobId?: string };
   /** Webview access through hosted Appium, created on first use of webViewBridge. */
   webViews?: HostedAppiumWebViews;
-  /** Android API level, read once by clearText(). */
+  /** Android API level, read once by fill(). */
   androidSdk?: number;
 }
 
@@ -173,7 +173,7 @@ interface ActiveSession {
 interface TextInputState {
   cleared: boolean;
   typed: string | null;
-  /** iOS: rect of the field clearText() cleared (WDA's page source doesn't mark the focused field). */
+  /** iOS: rect of the field fill() cleared (WDA's page source doesn't mark the focused field). */
   clearedBounds?: Bounds;
 }
 
@@ -183,7 +183,7 @@ const ANDROID_EDITABLE_CLASS = /(?:EditText|AutoCompleteTextView)$/;
 /**
  * Sets `value` on Android text fields. `uiautomator dump` reports an empty field's hint as its text, so:
  *   - Android 16+ (`hint` attribute): text equal to the hint means empty, unless the driver just typed it.
- *   - Older: the focused field is empty after clearText() until something is typed or tapped.
+ *   - Older: the focused field is empty after fill('') until something is typed or tapped.
  */
 export function androidFieldValues(nodes: ViewNode[], state: TextInputState): ViewNode[] {
   for (const node of nodes) {
@@ -230,7 +230,7 @@ const sameField = (a: Bounds, b: Bounds) => centerInside(a, b) && centerInside(b
 /**
  * Clears `value` on iOS text fields showing their placeholder, which WDA reports as the value:
  *   - with `placeholderValue`: a value equal to it means empty, unless the driver just typed it.
- *   - without: the field clearText() cleared (found by its rect) is empty until something is typed or tapped.
+ *   - without: the field fill('') cleared (found by its rect) is empty until something is typed or tapped.
  */
 export function iosFieldValues(nodes: ViewNode[], state: TextInputState): ViewNode[] {
   for (const node of nodes) {
@@ -1113,8 +1113,14 @@ export class SauceLabsDriver implements MobilewrightDriver {
     }
   }
 
+  /** Replaces the focused text field's content with `text`; `''` only clears it. */
+  async fill(text: string): Promise<void> {
+    await this.clearFocusedField();
+    if (text) await this.typeText(text);
+  }
+
   /** Clears the focused text field: WDA's element clear on iOS; Ctrl+A then DEL on Android (13+). */
-  async clearText(): Promise<void> {
+  private async clearFocusedField(): Promise<void> {
     const session = this.requireSession();
     session.textInput = { cleared: true, typed: '' };
     if (session.platform === 'ios') {
@@ -1127,7 +1133,7 @@ export class SauceLabsDriver implements MobilewrightDriver {
     session.androidSdk ??= Number((await rest.executeShellCommand(session.sauceSessionId, 'getprop ro.build.version.sdk')).trim()) || undefined;
     if (session.androidSdk !== undefined && session.androidSdk < ANDROID_13_SDK) {
       throw new Error(
-        `clearText() needs Android 13 or later (it uses \`input keycombination\`); this device runs API level ${session.androidSdk}. ` +
+        `fill() needs Android 13 or later (it uses \`input keycombination\`); this device runs API level ${session.androidSdk}. ` +
         'Select newer devices, e.g. with osVersion: \'>=13\' in your project\'s use options.',
       );
     }

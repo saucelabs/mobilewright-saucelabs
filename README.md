@@ -3,7 +3,7 @@
 Run your [Mobilewright][mobilewright] tests on Sauce Labs real Android and iOS devices. Add the driver to your config;
 your tests don't change.
 
-Requires `mobilewright` 0.0.66, Node.js 22.12 or later, and Android 13 or later on Android devices.
+Requires `mobilewright` 0.0.67, Node.js 22.12 or later, and Android 13 or later on Android devices.
 
 ## Get started
 
