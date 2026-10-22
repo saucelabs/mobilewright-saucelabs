@@ -33,6 +33,12 @@ const DRIVER_FLAGS = new Set(['username', 'accessKey', 'region', 'apiAddress']);
 const READY_TIMEOUT_MS = 120_000;
 const HEALTHCHECK_INTERVAL_MS = 1_000;
 const CLOSE_TIMEOUT_MS = 10_000;
+/**
+ * To recover from a server error (5xx) while creating the tunnel, which makes sc exit during start-up, start() starts
+ * it again after these waits.
+ */
+const START_RETRY_DELAYS_MS = [5_000, 15_000];
+const TUNNEL_CREATE_SERVER_ERROR = /create tunnel:[^\n]* 5\d\d\b/;
 const DOWNLOAD_TIMEOUT_MS = 10 * 60_000;
 const MAX_ARCHIVE_BYTES = 500 * 1024 ** 2;
 /** Lines of Sauce Connect output kept for error messages. */
@@ -73,10 +79,32 @@ export class SauceConnect {
     options?: SauceConnectOptions;
     cacheDir?: string;
     fetchFn?: typeof globalThis.fetch;
+    /** @internal Test hook replacing START_RETRY_DELAYS_MS. */
+    retryDelaysMs?: number[];
   }): Promise<SauceConnect> {
     const { scVersion = DEFAULT_VERSION, tunnelName = `mobilewright-${randomUUID()}`, ...flags } = params.options ?? {};
     if (/^[0-4](\.|$)/.test(scVersion)) throw new Error(`Sauce Connect ${scVersion} is not supported: use version 5 or later.`);
     const binary = await downloadSauceConnect(params.region, scVersion, params.cacheDir ?? defaultCacheDir(), params.fetchFn);
+    const delays = params.retryDelaysMs ?? START_RETRY_DELAYS_MS;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await SauceConnect.launch(binary, flags, tunnelName, params);
+      } catch (err) {
+        const delay = delays[attempt];
+        if (delay === undefined || !TUNNEL_CREATE_SERVER_ERROR.test((err as Error).message)) throw err;
+        debug('creating tunnel %s got a server error; starting Sauce Connect again in %dms', tunnelName, delay);
+        await sleep(delay);
+      }
+    }
+  }
+
+  /** Starts sc once and resolves once the tunnel is ready; stops it and throws if it isn't. */
+  private static async launch(
+    binary: string,
+    flags: Record<string, SauceConnectOptions[string]>,
+    tunnelName: string,
+    params: { username: string; accessKey: string; region: Region },
+  ): Promise<SauceConnect> {
     const port = await freePort();
     const args = ['run', ...runFlags(flags), `--region=${params.region}`, `--tunnel-name=${tunnelName}`, `--api-address=127.0.0.1:${port}`];
     // Flag values can hold secrets (a proxy's password), so only the names are logged.

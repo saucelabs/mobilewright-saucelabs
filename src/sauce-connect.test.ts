@@ -7,13 +7,21 @@ import AdmZip from 'adm-zip';
 import { SauceConnect, downloadSauceConnect, runFlags } from './sauce-connect.js';
 import { USER_AGENT } from './util.js';
 
-/** Stands in for `sc run`: records its arguments and credentials, serves /readyz, and exits 0 on SIGINT. */
+/**
+ * Stands in for `sc run`: records its arguments and credentials and how often it was started, serves /readyz, and exits
+ * 0 on SIGINT. FAKE_SC_CREATE_FAILURES makes that many starts fail to create the tunnel with a 504.
+ */
 const FAKE_SC = `#!/usr/bin/env node
 const http = require('http');
 const fs = require('fs');
 const args = process.argv.slice(2);
-fs.writeFileSync(process.env.FAKE_SC_RECORD, JSON.stringify({ args, username: process.env.SAUCE_USERNAME, accessKey: process.env.SAUCE_ACCESS_KEY }));
+const starts = (fs.existsSync(process.env.FAKE_SC_RECORD) ? JSON.parse(fs.readFileSync(process.env.FAKE_SC_RECORD, 'utf8')).starts : 0) + 1;
+fs.writeFileSync(process.env.FAKE_SC_RECORD, JSON.stringify({ args, starts, username: process.env.SAUCE_USERNAME, accessKey: process.env.SAUCE_ACCESS_KEY }));
 if (process.env.FAKE_SC_FAIL) { console.log('level=ERROR msg="invalid credentials"'); process.exit(1); }
+if (starts <= Number(process.env.FAKE_SC_CREATE_FAILURES ?? 0)) {
+  console.log('level=ERROR msg="fatal error exiting" error="create tunnel: URL https://api.us-west-1.saucelabs.com/rest/v1/alice/tunnels - 504 (Gateway Timeout)"');
+  process.exit(1);
+}
 const port = Number(args.find((a) => a.startsWith('--api-address=')).split(':').pop());
 let ready = false;
 setTimeout(() => { ready = true; }, 1500);
@@ -125,7 +133,9 @@ test.describe('SauceConnect', () => {
   test.afterEach(() => {
     delete process.env['FAKE_SC_RECORD'];
     delete process.env['FAKE_SC_FAIL'];
+    delete process.env['FAKE_SC_CREATE_FAILURES'];
   });
+  const starts = async () => JSON.parse(await readFile(record, 'utf8')).starts as number;
 
   test('starts sc with the credentials in its environment, waits until ready, and stops it', async () => {
     const { fetchFn } = fakeFetch(fakeArchive());
@@ -168,7 +178,31 @@ test.describe('SauceConnect', () => {
     process.env['FAKE_SC_FAIL'] = '1';
     const { fetchFn } = fakeFetch(fakeArchive());
 
-    await expect(SauceConnect.start({ username: 'alice', accessKey: 'wrong', region: 'us-west-1', cacheDir, fetchFn }))
+    await expect(SauceConnect.start({ username: 'alice', accessKey: 'wrong', region: 'us-west-1', cacheDir, fetchFn, retryDelaysMs: [0, 0] }))
       .rejects.toThrow(/could not start[\s\S]*exit code 1[\s\S]*invalid credentials/);
+    // Not a server error, so not tried again.
+    expect(await starts()).toBe(1);
+  });
+
+  test('starts again when creating the tunnel gets a server error, with the same tunnel name', async () => {
+    process.env['FAKE_SC_CREATE_FAILURES'] = '2';
+    const { fetchFn } = fakeFetch(fakeArchive());
+
+    const tunnel = await SauceConnect.start({
+      username: 'alice', accessKey: 'secret', region: 'us-west-1', cacheDir, fetchFn, retryDelaysMs: [0, 0], options: { tunnelName: 'my-tunnel' },
+    });
+    await tunnel.stop();
+
+    expect(await starts()).toBe(3);
+    expect(JSON.parse(await readFile(record, 'utf8')).args).toContain('--tunnel-name=my-tunnel');
+  });
+
+  test('gives up with Sauce Connect output when every try gets a server error', async () => {
+    process.env['FAKE_SC_CREATE_FAILURES'] = '5';
+    const { fetchFn } = fakeFetch(fakeArchive());
+
+    await expect(SauceConnect.start({ username: 'alice', accessKey: 'secret', region: 'us-west-1', cacheDir, fetchFn, retryDelaysMs: [0, 0] }))
+      .rejects.toThrow(/could not start[\s\S]*create tunnel:.*504/);
+    expect(await starts()).toBe(3);
   });
 });
