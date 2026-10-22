@@ -77,6 +77,8 @@ session created without `prepare()` (direct `connect()`) starts it first. Every 
   (added to `tlsPassthroughDomains`, or excluded from `tlsResignDomains` when that's given). iOS checks a test app's
   signing with Apple before opening it; re-signed, the check fails and the app shows "Unable to Verify App" (iOS 18 and
   26). The driver waits for `/readyz`, for up to 120s; when sc exits first, the error includes its last output lines.
+  When its output shows that creating the tunnel got a server error (5xx), the driver starts sc again with the same
+  tunnel name, after 5s and then 15s; any other failure is reported right away.
 - **Stop:** SIGINT, so sc closes the tunnel at Sauce Labs, then SIGKILL after 10s. On SIGINT/SIGTERM, the
   driver stops the tunnel after deleting the sessions that use it. On a plain process exit it sends SIGINT
   without waiting, and sc finishes on its own.
