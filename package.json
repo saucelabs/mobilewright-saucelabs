@@ -61,7 +61,7 @@
     "@typescript-eslint/parser": "^8.71.2",
     "eslint": "^10.13.0",
     "mobilewright": "^0.0.67",
-    "release-it": "21.1.1",
+    "release-it": "21.1.2",
     "typescript": "^5.9.3"
   },
   "publishConfig": {
