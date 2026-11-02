@@ -37,10 +37,11 @@ export default defineConfig({
   projects: [
     {
       name: 'android',
-      // Foldables can launch apps onto the hidden display; the driver needs Android 13 or later. The patterns only match
-      // device ids (display names have spaces), so free-trial devices (`_free` in the id) can be left out: some don't
-      // trust Sauce Connect's certificate.
-      use: { platform: 'android', installApps: APK, deviceName: /^Google_Pixel_(?!.*(Fold|_free))/, osVersion: '>=13', bundleId: 'com.saucelabs.mydemoapp.android' },
+      // Foldables can launch apps onto the hidden display, and tablets show the app in landscape, where the tests would
+      // need to scroll. The driver needs Android 13 or later. The patterns only match device ids (display names have
+      // spaces), so free-trial devices (`_free` in the id) can be left out: some don't trust Sauce Connect's
+      // certificate.
+      use: { platform: 'android', installApps: APK, deviceName: /^Google_Pixel_(?!.*(Fold|Tablet|_free))/, osVersion: '>=13', bundleId: 'com.saucelabs.mydemoapp.android' },
     },
     {
       name: 'ios',

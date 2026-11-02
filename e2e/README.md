@@ -87,7 +87,8 @@ The configs pick devices accordingly:
 
 - **Android 13 or later** (`osVersion: '>=13'`): the driver's `fill()` needs it, and fails with a clear
   message on older devices.
-- **No foldables on Android**: apps there can launch onto the display that isn't shown.
+- **No foldables or tablets on Android**: apps on foldables can launch onto the display that isn't shown, and
+  tablets show the apps in landscape, where the tests would need to scroll.
 - **iOS**: Sauce Labs' demo app needs iOS 16.6+, Playground needs iOS 18.6+. On older devices Sauce Labs only
   reports "the application … cannot be installed".
 
