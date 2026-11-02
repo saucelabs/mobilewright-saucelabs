@@ -2,7 +2,7 @@
  * Integration tests on real Sauce Labs devices, one session at a time. Environment:
  *   SAUCE_INTEGRATION=1, SAUCE_USERNAME, SAUCE_ACCESS_KEY (required)
  *   SAUCE_PLATFORM=ios|android (default: ios), SAUCE_REGION (default: us-west-1)
- *   SAUCE_DEVICE_NAME=<regex> (default: a Pixel or an iPhone, no foldables or free-trial devices), SAUCE_OS_VERSION (default: >=13 / >=17)
+ *   SAUCE_DEVICE_NAME=<regex> (default: a Pixel or an iPhone, no foldables, tablets or free-trial devices), SAUCE_OS_VERSION (default: >=13 / >=17)
  */
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -17,9 +17,10 @@ const HAS_CREDENTIALS = Boolean(process.env['SAUCE_USERNAME'] && process.env['SA
 const PLATFORM = (process.env['SAUCE_PLATFORM'] ?? 'ios') as Platform;
 const REGION = (process.env['SAUCE_REGION'] ?? 'us-west-1') as Region;
 const IOS_WDA_STORAGE_REF = process.env['SAUCE_IOS_WDA_STORAGE_REF'];
-// Foldables (apps there can launch onto the display that isn't shown) and free-trial devices (`_free` in the id) are
-// excluded. The patterns only match device ids, since display names have spaces.
-const DEVICE_NAME = process.env['SAUCE_DEVICE_NAME'] ?? (PLATFORM === 'android' ? '^Google_Pixel_(?!.*(Fold|_free))' : '^iPhone_(?!.*_free)');
+// Foldables (apps there can launch onto the display that isn't shown), tablets (the app shows in landscape) and
+// free-trial devices (`_free` in the id) are excluded. The patterns only match device ids, since display names have
+// spaces.
+const DEVICE_NAME = process.env['SAUCE_DEVICE_NAME'] ?? (PLATFORM === 'android' ? '^Google_Pixel_(?!.*(Fold|Tablet|_free))' : '^iPhone_(?!.*_free)');
 // The demo app needs iOS 16.6+, and fill() Android 13+.
 const OS_VERSION = process.env['SAUCE_OS_VERSION'] ?? (PLATFORM === 'android' ? '>=13' : '>=17');
 const SETTINGS_APP = PLATFORM === 'android' ? 'com.android.settings' : 'com.apple.Preferences';
