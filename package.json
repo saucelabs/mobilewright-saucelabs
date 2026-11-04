@@ -51,7 +51,7 @@
     "mobilewright": "0.0.67"
   },
   "devDependencies": {
-    "@mobilewright/protocol": "^0.0.67",
+    "@mobilewright/protocol": "^0.0.68",
     "@playwright/test": "1.63.0",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@types/debug": "^4.1.13",
@@ -60,7 +60,7 @@
     "@typescript-eslint/eslint-plugin": "^8.71.2",
     "@typescript-eslint/parser": "^8.71.2",
     "eslint": "^10.13.0",
-    "mobilewright": "^0.0.67",
+    "mobilewright": "^0.0.68",
     "release-it": "21.1.2",
     "typescript": "^5.9.3"
   },
