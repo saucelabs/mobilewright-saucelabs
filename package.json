@@ -47,8 +47,8 @@
     "ws": "^8.22.0"
   },
   "peerDependencies": {
-    "@mobilewright/protocol": "0.0.67",
-    "mobilewright": "0.0.67"
+    "@mobilewright/protocol": "0.0.68",
+    "mobilewright": "0.0.68"
   },
   "devDependencies": {
     "@mobilewright/protocol": "^0.0.68",
