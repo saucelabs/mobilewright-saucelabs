@@ -19,6 +19,11 @@ const EMPTY_LIST_RETRY_MS = 10_000;
 const APPIUM_IDLE_TIMEOUT_S = 300;
 /** A context switch takes under a second; one that takes this long won't answer. */
 const SWITCH_TIMEOUT_MS = 20_000;
+/**
+ * Listing contexts takes a few seconds. Appium can stay stuck while it connects to a web view's devtools socket
+ * (seen on a Pixel 7 with Android 14), so the driver stops waiting after this long.
+ */
+const LIST_CONTEXTS_TIMEOUT_MS = 30_000;
 
 /**
  * Webviews through the Appium server Sauce Labs hosts for the session: its webview contexts give JavaScript,
@@ -131,7 +136,15 @@ export class HostedAppiumWebViews implements WebViewBridge {
   }
 
   private async listContexts(): Promise<string[]> {
-    const contexts = await this.call<string[]>('GET', '/contexts');
+    let contexts: string[];
+    try {
+      contexts = await this.call<string[]>('GET', '/contexts', undefined, LIST_CONTEXTS_TIMEOUT_MS);
+    } catch (err) {
+      if (!isTimeout(err)) throw err;
+      // Appium runs a session's commands one at a time, so every later command would wait behind this one.
+      await this.close();
+      throw new Error(`Appium did not list the webviews within ${LIST_CONTEXTS_TIMEOUT_MS / 1000}s.`, { cause: err });
+    }
     this.contextsListed = true;
     return contexts;
   }

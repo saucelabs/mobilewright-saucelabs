@@ -254,7 +254,9 @@ per session: the Appium session is lost for good. iOS 17 doesn't do this. So on 
   listed, so the driver lists them first.
 
 On Android, Chrome is a single context (`WEBVIEW_chrome`), on whichever tab ChromeDriver attached to, which isn't
-always the one in front.
+always the one in front. Listing contexts (`GET /contexts`) can hang while Appium connects to a web view's devtools
+socket (seen on a Pixel 7 with Android 14). After 30s the driver deletes the Appium session and fails with a clear
+message, and the next call starts a new session.
 
 ## Test reporting
 

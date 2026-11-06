@@ -129,6 +129,26 @@ test.describe('HostedAppiumWebViews', () => {
     expect(calls).toBe(3);
   });
 
+  test('a context list that does not answer fails clearly, and the next call gets a new Appium session', async () => {
+    const appium = createAppium({ WEBVIEW_1: { url: 'https://one/', title: '1' } });
+    const original = appium.rest.appiumRequest.bind(appium.rest);
+    const timeouts: (number | undefined)[] = [];
+    (appium.rest as any).appiumRequest = async (url: string, method: string, path: string, body?: unknown, timeoutMs?: number) => {
+      if (path === '/session/appium-1/contexts') {
+        timeouts.push(timeoutMs);
+        throw Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' });
+      }
+      return original(url, method, path, body);
+    };
+    const bridge = new HostedAppiumWebViews(appium.rest, 'sauce-1', 'android');
+
+    await expect(bridge.listWebViews()).rejects.toThrow('Appium did not list the webviews within 30s.');
+    expect(timeouts).toEqual([30_000]);
+    expect(appium.calls.filter((c) => c.method === 'DELETE').map((c) => c.path)).toEqual(['/session/appium-1']);
+
+    expect(await bridge.listWebViews()).toEqual([{ id: 'WEBVIEW_1', url: 'https://one/', title: '1' }]);
+  });
+
   test('on iOS, listWebViews reads each page\'s URL and title without switching into it', async () => {
     const appium = createAppium({
       'WEBVIEW_9.1': { url: 'https://a.example/', title: 'A' },
