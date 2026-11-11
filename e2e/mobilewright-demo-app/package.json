@@ -10,7 +10,7 @@
   },
   "devDependencies": {
     "@mobilewright/test": "^0.0.68",
-    "@playwright/test": "1.63.0",
+    "@playwright/test": "1.65.0",
     "@saucelabs/mobilewright-driver": "^0.0.3",
     "mobilewright": "^0.0.68"
   }
