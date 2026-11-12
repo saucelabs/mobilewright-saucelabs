@@ -24,6 +24,11 @@ updates:
     groups:
       mobilewright:
         patterns: ['mobilewright', '@mobilewright/*']
+    # Same as the root: these follow the versions Mobilewright uses.
+    ignore:
+      - dependency-name: '@playwright/test'
+      - dependency-name: '@types/node'
+      - dependency-name: typescript
 
   - package-ecosystem: github-actions
     directory: /
