@@ -126,6 +126,7 @@ The Access API gives several channels; each command uses the one that works (and
 | Type text | Socket keys (ASCII), `input text` otherwise | WDA `wda/keys` |
 | Clear text | `input keycombination` Ctrl+A, then `input keyevent` DEL (Android 13+) | WDA element clear on the focused field |
 | Hardware buttons | `input keyevent` | WDA `pressButton` |
+| Keyboard shown / hide | `dumpsys input_method` (`mInputShown`) / `input keyevent` BACK | WDA keyboard element / its Return or Done key |
 | Launch app | REST `launchApp` with the launcher activity (resolved via `cmd package resolve-activity`, cached) | REST `launchApp` |
 | Terminate app | `am force-stop` | WDA `apps/terminate` (after dismissing an open alert) |
 | Install / uninstall | REST `installApp` (polled until `FINISHED`) / `uninstallApp` | Same |
@@ -167,6 +168,14 @@ each rect's center lies inside the other.
 buttons jump while the keyboard re-appears), and a page source read in that moment has positions that are gone a
 second later. Mobilewright re-reads the screen right after typing to find a prompt's OK button, so `typeText()` returns
 only when two reads of the focused element's rect agree (up to 3s).
+
+**Hiding the keyboard presses a key.** Android has no command that only closes the keyboard, so `hideKeyboard()`
+presses BACK, and only after checking that a keyboard is up (otherwise BACK leaves the screen). Visibility comes
+from `mInputShown`: `mIsInputViewShown` stays true after the keyboard closes (Android 15). On iOS, WDA's
+`wda/keyboard/dismiss` answers success but leaves an iPhone keyboard up (iOS 27), since iPhone keyboards have no key
+that only hides them. The driver presses the keyboard's Return or Done key instead, which closes a single-line field's
+keyboard; keys that act (Send, Go, Search) are left alone. Once the keyboard closes, WDA answers "stale element
+reference" for it, which counts as hidden.
 
 **Android `fill()` needs Android 13.** The socket only sends single keys (no select-all), and
 `input keycombination` arrived in API 33. Older devices fail with a clear error instead of silently not clearing.

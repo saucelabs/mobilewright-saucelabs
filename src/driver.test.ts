@@ -93,6 +93,15 @@ function createFakeWda(responses: Record<string, unknown> = {}) {
       if (value instanceof Error) throw value;
       return value;
     },
+    isKeyboardShown: async () => {
+      calls.push({ method: 'isKeyboardShown', args: [] });
+      const value = responses['isKeyboardShown'];
+      return typeof value === 'function' ? value() : Boolean(value);
+    },
+    pressKeyboardReturnKey: async () => {
+      calls.push({ method: 'pressKeyboardReturnKey', args: [] });
+      return (responses['pressKeyboardReturnKey'] as boolean | undefined) ?? true;
+    },
   };
 }
 
@@ -726,6 +735,83 @@ test.describe('SauceLabsDriver.pressButton()', () => {
 });
 
 // ─── Apps ────────────────────────────────────────────────────────────────────
+
+// ─── Keyboard ────────────────────────────────────────────────────────────────
+
+test.describe('SauceLabsDriver keyboard', () => {
+  /** Answers `dumpsys input_method` with the given keyboard states in turn (the last one repeats). */
+  function inputMethod(...shown: boolean[]) {
+    let i = 0;
+    return async (_s: unknown, cmd: unknown) => (String(cmd) === 'dumpsys input_method'
+      ? `  mInputShown=${shown[Math.min(i++, shown.length - 1)]}\n  mIsInputViewShown=true mStatusIcon=0\n`
+      : '');
+  }
+  /** Answers the given keyboard states in turn (the last one repeats). */
+  const states = (...shown: boolean[]) => {
+    let i = 0;
+    return () => shown[Math.min(i++, shown.length - 1)];
+  };
+  const shellCommands = (calls: RestCall[]) => calls.filter((c) => c.method === 'executeShellCommand').map((c) => c.args[1]);
+
+  test('Android isKeyboardVisible() reads mInputShown, not mIsInputViewShown', async () => {
+    const shown = createDriverWithSession({ platform: 'android', restResponses: { executeShellCommand: inputMethod(true) } });
+    expect(await shown.driver.isKeyboardVisible()).toBe(true);
+    const hidden = createDriverWithSession({ platform: 'android', restResponses: { executeShellCommand: inputMethod(false) } });
+    expect(await hidden.driver.isKeyboardVisible()).toBe(false);
+  });
+
+  test('iOS isKeyboardVisible() asks WDA', async () => {
+    const { driver } = createDriverWithSession({ platform: 'ios', wdaResponses: { isKeyboardShown: true } });
+    expect(await driver.isKeyboardVisible()).toBe(true);
+  });
+
+  test('Android hideKeyboard() presses BACK, then waits until the keyboard is gone', async () => {
+    const { driver, restCalls } = createDriverWithSession({ platform: 'android', restResponses: { executeShellCommand: inputMethod(true, true, false) } });
+    await withoutRealSleeps(() => driver.hideKeyboard());
+    expect(shellCommands(restCalls)).toEqual(['dumpsys input_method', 'input keyevent 4', 'dumpsys input_method', 'dumpsys input_method']);
+  });
+
+  test('Android hideKeyboard() without a keyboard does not press BACK', async () => {
+    const { driver, restCalls } = createDriverWithSession({ platform: 'android', restResponses: { executeShellCommand: inputMethod(false) } });
+    await driver.hideKeyboard();
+    expect(shellCommands(restCalls)).toEqual(['dumpsys input_method']);
+  });
+
+  test('iOS hideKeyboard() presses Return or Done and waits until the keyboard is gone', async () => {
+    const { driver, wda } = createDriverWithSession({ platform: 'ios', wdaResponses: { isKeyboardShown: states(true, true, false) } });
+    await withoutRealSleeps(() => driver.hideKeyboard());
+    expect(wda!.calls.map((c) => c.method)).toEqual(['isKeyboardShown', 'pressKeyboardReturnKey', 'isKeyboardShown', 'isKeyboardShown']);
+    // Return can change the field's text, so getViewHierarchy() no longer trusts what was typed.
+    expect((driver as any).session.textInput.typed).toBeNull();
+  });
+
+  test('iOS hideKeyboard() without a keyboard presses nothing', async () => {
+    const { driver, wda } = createDriverWithSession({ platform: 'ios', wdaResponses: { isKeyboardShown: false } });
+    await driver.hideKeyboard();
+    expect(wda!.calls.map((c) => c.method)).toEqual(['isKeyboardShown']);
+  });
+
+  test('iOS hideKeyboard() explains a keyboard without Return or Done', async () => {
+    const { driver } = createDriverWithSession({ platform: 'ios', wdaResponses: { isKeyboardShown: true, pressKeyboardReturnKey: false } });
+    await expect(driver.hideKeyboard()).rejects.toThrow('no Return or Done key');
+  });
+
+  test('hideKeyboard() throws when the keyboard stays up', async () => {
+    const android = createDriverWithSession({ platform: 'android', restResponses: { executeShellCommand: inputMethod(true) } });
+    const ios = createDriverWithSession({ platform: 'ios', wdaResponses: { isKeyboardShown: true } });
+    const realNow = Date.now;
+    let now = realNow();
+    Date.now = () => (now += 1_000);
+    try {
+      await withoutRealSleeps(async () => {
+        await expect(android.driver.hideKeyboard()).rejects.toThrow('keyboard is still visible after 5s');
+        await expect(ios.driver.hideKeyboard()).rejects.toThrow(/still visible after 5s \(Return in a multi-line field/);
+      });
+    } finally {
+      Date.now = realNow;
+    }
+  });
+});
 
 test.describe('SauceLabsDriver.launchApp()', () => {
   test('sends bundleId for iOS', async () => {

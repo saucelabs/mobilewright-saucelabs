@@ -10,6 +10,11 @@ const debug = createDebug('mw:mobilewright-driver:wda');
 const WDA_POLL_INTERVAL_MS = 2_000;
 /** WDA's answer when the session's application element belongs to an app that has closed. */
 const STALE_APPLICATION = /stale element reference[\s\S]*Application '/;
+/** WDA's answer for an element that has left the screen. */
+const STALE_ELEMENT = /stale element reference/;
+/** The keyboard keys that close it without acting: Return and Done, in any case. */
+const RETURN_KEY_PREDICATE =
+  'type IN {\'XCUIElementTypeButton\', \'XCUIElementTypeKey\'} AND (label ==[c] \'return\' OR label ==[c] \'done\')';
 /** How long the driver looks for the focused element after a tap, and how often. */
 const FOCUS_WAIT_MS = 3_000;
 const FOCUS_POLL_MS = 300;
@@ -322,6 +327,46 @@ export class WdaClient {
       debug('focused element moved after typing: %o → %o', last, next);
       last = next;
     }
+  }
+
+  /** Whether a software keyboard is on screen. */
+  async isKeyboardShown(): Promise<boolean> {
+    for (const id of await this.keyboardIds()) {
+      try {
+        if ((await this.call<{ value?: boolean }>('GET', `/element/${id}/displayed`))?.value) return true;
+      } catch (err) {
+        // The keyboard closed between the two calls.
+        if (!STALE_ELEMENT.test((err as Error).message)) throw err;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Presses the keyboard's Return or Done key, which closes the keyboard of a single-line field. WDA's
+   * `wda/keyboard/dismiss` answers success but leaves an iPhone keyboard up (iOS 27): iPhone keyboards have no key
+   * that only hides them. Keys that act (Send, Go, Search) are left alone. False when no keyboard has such a key.
+   */
+  async pressKeyboardReturnKey(): Promise<boolean> {
+    for (const keyboardId of await this.keyboardIds()) {
+      const key = await this.call<WdaElementResponse>('POST', `/element/${keyboardId}/element`, {
+        using: 'predicate string',
+        value: RETURN_KEY_PREDICATE,
+      }).catch((err: Error) => debug('no Return or Done key: %s', err.message.split('\n')[0]));
+      const keyId = elementIdOf(key ?? undefined);
+      if (!keyId) continue;
+      await this.call('POST', `/element/${keyId}/click`, {});
+      return true;
+    }
+    return false;
+  }
+
+  private async keyboardIds(): Promise<string[]> {
+    const resp = await this.call<{ value?: Array<WdaElementResponse['value']> }>('POST', '/elements', {
+      using: 'class name',
+      value: 'XCUIElementTypeKeyboard',
+    });
+    return (resp?.value ?? []).map((value) => elementIdOf({ value })).filter((id): id is string => Boolean(id));
   }
 
   /** The orientation WDA reports, as PORTRAIT or LANDSCAPE. */
