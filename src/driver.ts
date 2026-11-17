@@ -336,6 +336,9 @@ const RECORDING_NOT_SUPPORTED =
 
 /** How long tap() holds the touch: an iOS switch ignores a touch that goes down and up at once. */
 const TAP_HOLD_MS = 100;
+/** How long hideKeyboard() waits for the keyboard to close, and how often it checks. */
+const KEYBOARD_HIDE_TIMEOUT_MS = 5_000;
+const KEYBOARD_POLL_MS = 250;
 
 /** How long setOrientation() waits for the device to show the requested orientation. */
 const ORIENTATION_SETTLE_TIMEOUT_MS = 10_000;
@@ -1243,6 +1246,45 @@ export class SauceLabsDriver implements MobilewrightDriver {
       return;
     }
     throw new Error(`Unsupported hardware button on ${session.platform === 'android' ? 'Android' : 'iOS'}: ${button}`);
+  }
+
+  /**
+   * Whether the software keyboard is showing: WDA's keyboard element on iOS; `mInputShown` from `dumpsys input_method`
+   * on Android (`mIsInputViewShown` stays true after the keyboard closes, Pixel 8 Pro, Android 15).
+   */
+  async isKeyboardVisible(): Promise<boolean> {
+    const session = this.requireSession();
+    if (session.platform === 'ios') return this.requireWda(session).isKeyboardShown();
+    const stdout = await this.makeRest().executeShellCommand(session.sauceSessionId, 'dumpsys input_method');
+    return /\bmInputShown=true\b/.test(stdout);
+  }
+
+  /**
+   * Closes the software keyboard: BACK on Android, the keyboard's Return or Done key on iOS. Does nothing when no
+   * keyboard is showing (BACK would leave the screen), and throws if the keyboard is still up after
+   * KEYBOARD_HIDE_TIMEOUT_MS.
+   */
+  async hideKeyboard(): Promise<void> {
+    const session = this.requireSession();
+    if (!(await this.isKeyboardVisible())) return;
+    if (session.platform === 'ios') {
+      session.textInput = { cleared: false, typed: null };
+      if (!(await this.requireWda(session).pressKeyboardReturnKey())) {
+        throw new Error('hideKeyboard: the keyboard has no Return or Done key to close it with');
+      }
+    } else {
+      await this.makeRest().executeShellCommand(session.sauceSessionId, `input keyevent ${BUTTON_KEYEVENT.BACK}`);
+    }
+    const deadline = Date.now() + KEYBOARD_HIDE_TIMEOUT_MS;
+    while (await this.isKeyboardVisible()) {
+      if (Date.now() >= deadline) {
+        throw new Error(
+          `hideKeyboard: the keyboard is still visible after ${KEYBOARD_HIDE_TIMEOUT_MS / 1000}s` +
+          (session.platform === 'ios' ? ' (Return in a multi-line field adds a new line instead of closing it)' : ''),
+        );
+      }
+      await sleep(KEYBOARD_POLL_MS);
+    }
   }
 
   // ─── Screen ──────────────────────────────────────────────────────────────────

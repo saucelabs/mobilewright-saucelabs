@@ -63,3 +63,21 @@ test('check and uncheck set the toggle, and checking it again leaves it on', asy
   await toggle.uncheck();
   await expect(toggle).not.toBeChecked();
 });
+
+test('the keyboard shows while a text field has focus, and hide closes it', async ({ screen, platform }) => {
+  expect(await screen.keyboard.isVisible()).toBe(false);
+  await screen.getByTestId('text_field').tap();
+  await expect.poll(() => screen.keyboard.isVisible()).toBe(true);
+
+  await screen.keyboard.hide();
+  expect(await screen.keyboard.isVisible()).toBe(false);
+  // A tap straight after hide lands on the app, not on the keyboard.
+  await screen.getByTestId(platform === 'android' ? 'stepper_increment' : 'stepper-Increment').tap();
+  if (platform === 'android') await expect(screen.getByTestId('stepper_value')).toHaveText('1');
+  else await expect(screen.getByTestId('stepper')).toHaveValue('1');
+});
+
+test('hide with no keyboard showing stays on the same screen', async ({ screen }) => {
+  await screen.keyboard.hide();
+  await expect(screen.getByTestId('text_field')).toBeVisible();
+});

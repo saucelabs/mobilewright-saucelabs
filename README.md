@@ -115,6 +115,10 @@ Mobilewright's device pool can wait forever for the other platform.
 before it starts: `test.skip(({ platform }) => platform === 'ios', 'reason')`. Each test in Playwright's HTML report
 links to its Sauce Labs job, where the video is. Mobilewright's own `video` option records nothing on Sauce Labs.
 
+**Keyboard.** `screen.keyboard.hide()` presses BACK on Android. On iOS it presses the keyboard's Return or Done key, and
+the app sees that key press. In a multi-line field Return adds a new line, and keyboards with only Send, Go or Search
+have no key to press, so `hide()` throws in both cases. Tap outside the field or use the app's own control instead.
+
 **Local device or Sauce Labs.** Use Sauce Labs only when the credentials are set:
 
 ```ts

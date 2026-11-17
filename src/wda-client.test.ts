@@ -333,3 +333,57 @@ test('getActiveAppInfo falls back to the active apps list when WDA cannot descri
   expect(await new WdaClient(restWith(() => ({ value: { bundleId: 'com.example', name: 'Example' } })), 's1').getActiveAppInfo())
     .toEqual({ bundleId: 'com.example', name: 'Example' });
 });
+
+test.describe('WdaClient keyboard', () => {
+  /** Fake with a ready device WebDriverAgent and the given keyboards: `displayed` is a boolean or a thrown error. */
+  function keyboardRest(keyboards: { id: string; displayed: boolean | Error; returnKey?: string }[]) {
+    const requests: { method: string; path: string; body: unknown }[] = [];
+    const rest = {
+      async wdaRequest(_s: string, method: string, _h: string, _p: number, path: string, body?: unknown) {
+        requests.push({ method, path, body });
+        if (path === '/status') return { value: { ready: true } };
+        if (method === 'POST' && path === '/session') return { sessionId: 'wda-sess' };
+        if (path.endsWith('/elements')) return { value: keyboards.map((k) => ({ ELEMENT: k.id })) };
+        const keyboard = keyboards.find((k) => path.includes(`/element/${k.id}/`));
+        if (keyboard && path.endsWith('/displayed')) {
+          if (keyboard.displayed instanceof Error) throw keyboard.displayed;
+          return { value: keyboard.displayed };
+        }
+        if (keyboard && path.endsWith('/element')) {
+          if (!keyboard.returnKey) throw new Error('WDA proxy POST element failed: 404 no such element');
+          return { value: { ELEMENT: keyboard.returnKey } };
+        }
+        return { value: null };
+      },
+    };
+    return { rest: rest as unknown as RestClient, requests };
+  }
+  const STALE = new Error('WDA proxy GET displayed failed: 404 {"value":{"error":"stale element reference","message":"Keyboard (Identity Binding) is not present"}}');
+
+  test('isKeyboardShown() is true for a displayed keyboard element, false without one', async () => {
+    expect(await new WdaClient(keyboardRest([{ id: 'kb', displayed: true }]).rest, 's1').isKeyboardShown()).toBe(true);
+    expect(await new WdaClient(keyboardRest([{ id: 'kb', displayed: false }]).rest, 's1').isKeyboardShown()).toBe(false);
+    expect(await new WdaClient(keyboardRest([]).rest, 's1').isKeyboardShown()).toBe(false);
+  });
+
+  test('isKeyboardShown() counts a keyboard that went stale as hidden, and passes other errors on', async () => {
+    expect(await new WdaClient(keyboardRest([{ id: 'kb', displayed: STALE }]).rest, 's1').isKeyboardShown()).toBe(false);
+    const down = new WdaClient(keyboardRest([{ id: 'kb', displayed: new Error('WDA proxy failed: 500') }]).rest, 's1');
+    await expect(down.isKeyboardShown()).rejects.toThrow('500');
+  });
+
+  test('pressKeyboardReturnKey() clicks the Return or Done key found inside the keyboard', async () => {
+    const { rest, requests } = keyboardRest([{ id: 'kb', displayed: true, returnKey: 'key-1' }]);
+    expect(await new WdaClient(rest, 's1').pressKeyboardReturnKey()).toBe(true);
+
+    const lookup = requests.find((r) => r.path === '/session/wda-sess/element/kb/element');
+    expect((lookup?.body as { value: string }).value).toContain('label ==[c] \'return\' OR label ==[c] \'done\'');
+    expect(requests.some((r) => r.path === '/session/wda-sess/element/key-1/click')).toBe(true);
+  });
+
+  test('pressKeyboardReturnKey() is false when the keyboard has no such key', async () => {
+    const { rest, requests } = keyboardRest([{ id: 'kb', displayed: true }]);
+    expect(await new WdaClient(rest, 's1').pressKeyboardReturnKey()).toBe(false);
+    expect(requests.some((r) => r.path.endsWith('/click'))).toBe(false);
+  });
+});
