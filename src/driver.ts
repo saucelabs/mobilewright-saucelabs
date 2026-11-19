@@ -1062,9 +1062,9 @@ export class SauceLabsDriver implements MobilewrightDriver {
     const session = this.requireSession();
     session.textInput = { cleared: false, typed: '' };
     const { cw, ch, orientation } = this.touchFrame(session);
-    session.ioSocket.sendTouch('d', [{ x, y, index: 0 }], cw, ch, orientation);
+    await session.ioSocket.sendTouch('d', [{ x, y, index: 0 }], cw, ch, orientation);
     await sleep(TAP_HOLD_MS);
-    session.ioSocket.sendTouch('u', [{ x, y, index: 0 }], cw, ch, orientation);
+    await session.ioSocket.sendTouch('u', [{ x, y, index: 0 }], cw, ch, orientation);
   }
 
   /** Two taps, 100ms apart. */
@@ -1079,9 +1079,9 @@ export class SauceLabsDriver implements MobilewrightDriver {
     const session = this.requireSession();
     session.textInput = { cleared: false, typed: '' };
     const { cw, ch, orientation } = this.touchFrame(session);
-    session.ioSocket.sendTouch('d', [{ x, y, index: 0 }], cw, ch, orientation);
+    await session.ioSocket.sendTouch('d', [{ x, y, index: 0 }], cw, ch, orientation);
     await sleep(duration);
-    session.ioSocket.sendTouch('u', [{ x, y, index: 0 }], cw, ch, orientation);
+    await session.ioSocket.sendTouch('u', [{ x, y, index: 0 }], cw, ch, orientation);
   }
 
   /** Types into the focused field: WDA on iOS; on Android socket keys for ASCII, `input text` otherwise. */
@@ -1097,7 +1097,7 @@ export class SauceLabsDriver implements MobilewrightDriver {
     const ascii = /^[\x00-\x7F]*$/.test(text);
     if (ascii) {
       for (const char of text) {
-        session.ioSocket.sendKey(char);
+        await session.ioSocket.sendKey(char);
       }
     } else {
       const rest = this.makeRest();
@@ -1112,7 +1112,7 @@ export class SauceLabsDriver implements MobilewrightDriver {
     const { ioSocket } = session;
     session.textInput = { cleared: false, typed: null };
     for (const key of keys) {
-      ioSocket.sendKey(key);
+      await ioSocket.sendKey(key);
     }
   }
 
@@ -1176,15 +1176,15 @@ export class SauceLabsDriver implements MobilewrightDriver {
     const duration = opts?.duration ?? 300;
     const stepDelay = Math.round(duration / steps);
 
-    ioSocket.sendTouch('d', [{ x: startX, y: startY, index: 0 }], cw, ch, orientation);
+    await ioSocket.sendTouch('d', [{ x: startX, y: startY, index: 0 }], cw, ch, orientation);
     for (let i = 1; i <= steps; i++) {
       const t = i / steps;
       const mx = startX + (endX - startX) * t;
       const my = startY + (endY - startY) * t;
       await sleep(stepDelay);
-      ioSocket.sendTouch('m', [{ x: mx, y: my, index: 0 }], cw, ch, orientation);
+      await ioSocket.sendTouch('m', [{ x: mx, y: my, index: 0 }], cw, ch, orientation);
     }
-    ioSocket.sendTouch('u', [{ x: endX, y: endY, index: 0 }], cw, ch, orientation);
+    await ioSocket.sendTouch('u', [{ x: endX, y: endY, index: 0 }], cw, ch, orientation);
   }
 
   /** Replays a multi-pointer gesture at its timestamps. */
@@ -1217,7 +1217,7 @@ export class SauceLabsDriver implements MobilewrightDriver {
         const isFirst = time === timestamps[0];
         const isLast = time === timestamps[timestamps.length - 1];
         const action = isFirst ? 'd' : isLast ? 'u' : 'm';
-        ioSocket.sendTouch(action, points, cw, ch, orientation);
+        await ioSocket.sendTouch(action, points, cw, ch, orientation);
       }
     }
   }
@@ -1242,7 +1242,7 @@ export class SauceLabsDriver implements MobilewrightDriver {
 
     const socketKey = BUTTON_KEY[button];
     if (socketKey) {
-      session.ioSocket.sendKey(socketKey);
+      await session.ioSocket.sendKey(socketKey);
       return;
     }
     throw new Error(`Unsupported hardware button on ${session.platform === 'android' ? 'Android' : 'iOS'}: ${button}`);

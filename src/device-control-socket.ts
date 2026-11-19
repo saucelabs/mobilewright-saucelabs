@@ -24,6 +24,8 @@ export class DeviceControlSocket {
   readonly #authHeader: string;
   private reconnectAttempts = 0;
   private reconnectTimer: NodeJS.Timeout | null = null;
+  /** The socket being opened, shared by the background reconnects and send(). */
+  private opening: Promise<void> | null = null;
   private closed = false;
 
   constructor(
@@ -34,15 +36,25 @@ export class DeviceControlSocket {
     this.#authHeader = basicAuth(username, accessKey);
   }
 
-  /** Connects, and reconnects on unexpected disconnects until disconnect(). */
+  /**
+   * Connects. After an unexpected close it reconnects in the background (5 attempts, 1s to 16s apart); once those
+   * fail, the next send reconnects first. disconnect() ends both.
+   */
   async connect(): Promise<void> {
     this.closed = false;
     this.reconnectAttempts = 0;
     await this.openSocket();
   }
 
-  private async openSocket(): Promise<void> {
-    this.ws = await openWebSocket(this.url, this.#authHeader, 'device control socket', debug, (ws) => {
+  private openSocket(): Promise<void> {
+    this.opening ??= this.doOpenSocket().finally(() => {
+      this.opening = null;
+    });
+    return this.opening;
+  }
+
+  private async doOpenSocket(): Promise<void> {
+    const ws = await openWebSocket(this.url, this.#authHeader, 'device control socket', debug, (ws) => {
       ws.on('message', (_data: WebSocket.RawData, isBinary: boolean) => {
         if (!isBinary) return;
         // Each frame must be acknowledged, or the stream stops.
@@ -50,16 +62,23 @@ export class DeviceControlSocket {
       });
       ws.on('close', (code: number) => {
         debug('device control socket closed (code=%d)', code);
-        if (this.ws === ws) this.ws = null;
+        if (this.ws !== ws) return;
+        this.ws = null;
         if (!this.closed && code !== WS_CLOSE_NORMAL) this.scheduleReconnect();
       });
     });
+    if (this.closed) {
+      // disconnect() ran while this socket was opening.
+      await closeWebSocket(ws);
+      throw new Error('Device control socket was disconnected');
+    }
+    this.ws = ws;
     this.reconnectAttempts = 0;
   }
 
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      debug('device control socket: max reconnect attempts reached');
+      debug('device control socket: max reconnect attempts reached; the next send reconnects');
       return;
     }
     const delay = RECONNECT_BASE_MS * 2 ** this.reconnectAttempts;
@@ -67,13 +86,17 @@ export class DeviceControlSocket {
     debug('device control socket: reconnecting in %dms (attempt %d)', delay, this.reconnectAttempts);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      if (this.closed) return;
+      if (this.closed || this.isOpen()) return;
       this.openSocket().catch((err) => {
         debug('reconnect failed: %s', (err as Error).message);
-        this.scheduleReconnect();
+        if (!this.closed && !this.isOpen()) this.scheduleReconnect();
       });
     }, delay);
     this.reconnectTimer.unref();
+  }
+
+  private isOpen(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN;
   }
 
   async disconnect(): Promise<void> {
@@ -88,31 +111,48 @@ export class DeviceControlSocket {
   // ─── Touch and keys ───────────────────────────────────────────────────────
 
   /** Sends a touch action (down/move/up) with one or more contact points. */
-  sendTouch(
+  async sendTouch(
     action: 'd' | 'm' | 'u',
     points: TouchPoint[],
     canvasW: number,
     canvasH: number,
     orientation: 0 | 1,
-  ): void {
+  ): Promise<void> {
     const parts: string[] = [`mt/${action}`, String(canvasW), String(canvasH), String(orientation), String(points.length)];
     for (const p of points) {
       parts.push(String(p.index), String(Math.round(p.x)), String(Math.round(p.y)));
     }
-    this.send(parts.join(' '));
+    await this.send(parts.join(' '));
   }
 
   /** Sends a key; typed characters are masked in the debug log, named keys (`Enter`, …) are not. */
-  sendKey(key: string): void {
-    this.send(`tt/${key}`, `tt/${key.length === 1 ? '*' : key}`);
+  async sendKey(key: string): Promise<void> {
+    await this.send(`tt/${key}`, `tt/${key.length === 1 ? '*' : key}`);
   }
 
-  private send(msg: string, logged = msg): void {
+  private async send(msg: string, logged = msg): Promise<void> {
+    if (!this.isOpen()) await this.reconnectNow();
     const ws = this.ws;
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       throw new Error('Device control socket is not connected');
     }
     debug('send %s', logged);
     ws.send(msg);
+  }
+
+  /**
+   * Opens the socket before a send: joins a reconnect in progress, or starts one at once instead of waiting for
+   * the next background attempt. The handshake gives up after 30s; the send after that tries again.
+   */
+  private async reconnectNow(): Promise<void> {
+    if (this.closed) throw new Error('Device control socket is not connected');
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
+    if (!this.opening) debug('device control socket: reconnecting before sending');
+    try {
+      await this.openSocket();
+    } catch (err) {
+      throw new Error(`Device control socket is not connected: ${(err as Error).message}`);
+    }
   }
 }

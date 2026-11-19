@@ -23,10 +23,10 @@ function createFakeIoSocket() {
   return {
     touchCalls,
     keyCalls,
-    sendTouch(action: 'd' | 'm' | 'u', points: TouchPoint[], cw: number, ch: number, orientation: 0 | 1) {
+    async sendTouch(action: 'd' | 'm' | 'u', points: TouchPoint[], cw: number, ch: number, orientation: 0 | 1) {
       touchCalls.push({ action, points, cw, ch, orientation });
     },
-    sendKey(key: string) { keyCalls.push(key); },
+    async sendKey(key: string) { keyCalls.push(key); },
     connect: async () => {},
     disconnect: async () => {},
   };

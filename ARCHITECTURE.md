@@ -223,6 +223,11 @@ of the test's 60s `installTimeout`.
 despite its spec. `cmd package resolve-activity` finds it; `dumpsys package` is the fallback (it's on the
 public-device [ADB allowlist][adb-allowlist]; `cmd package` isn't).
 
+**The device-control socket reconnects.** After an unexpected close it reconnects in the background, 5 times
+from 1s to 16s apart. If those fail, or the server closed it normally, the next touch or key reconnects first (the
+handshake gives up after 30s, and the send after that tries again). Without this, a session that lost the socket
+couldn't tap or type again, and every later test on that device failed. Only `disconnect()` stops it.
+
 **Orientation is read from the device.** The companion socket sends no orientation events, so the driver asks
 `dumpsys window displays` (Android) or WDA (iOS).
 
