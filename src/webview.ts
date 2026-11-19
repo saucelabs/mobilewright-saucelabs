@@ -18,12 +18,12 @@ const EMPTY_LIST_RETRY_MS = 10_000;
 /** How long an idle Appium session lives: short, so one left behind doesn't hold the device's UI automation for long. */
 const APPIUM_IDLE_TIMEOUT_S = 300;
 /** A context switch takes under a second; one that takes this long won't answer. */
-const SWITCH_TIMEOUT_MS = 20_000;
+export const SWITCH_TIMEOUT_MS = 20_000;
 /**
  * Listing contexts takes a few seconds. Appium can stay stuck while it connects to a web view's devtools socket
  * (seen on a Pixel 7 with Android 14), so the driver stops waiting after this long.
  */
-const LIST_CONTEXTS_TIMEOUT_MS = 30_000;
+export const LIST_CONTEXTS_TIMEOUT_MS = 30_000;
 
 /**
  * Webviews through the Appium server Sauce Labs hosts for the session: its webview contexts give JavaScript,
