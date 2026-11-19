@@ -9,8 +9,8 @@
     "test:ios": "mobilewright test --project ios"
   },
   "devDependencies": {
-    "@mobilewright/test": "^0.0.69",
+    "@mobilewright/test": "^0.0.70",
     "@saucelabs/mobilewright-driver": "^0.0.3",
-    "mobilewright": "^0.0.69"
+    "mobilewright": "^0.0.70"
   }
 }
