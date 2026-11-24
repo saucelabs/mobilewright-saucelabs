@@ -27,7 +27,10 @@ test('a product opens its details with price and add-to-cart', async ({ screen, 
 
 test('a product added to the cart shows up in the cart', async ({ screen, platform }) => {
   await firstProductImage(screen, platform).tap();
-  await screen.getByTestId(platform === 'android' ? 'cartBt' : 'AddToCart').tap();
+  const addToCart = screen.getByTestId(platform === 'android' ? 'cartBt' : 'AddToCart');
+  // On small screens (iPhone SE, 375x667) the button starts under the tab bar, which takes the tap.
+  await addToCart.scrollIntoViewIfNeeded();
+  await addToCart.tap();
 
   await screen.getByTestId(platform === 'android' ? 'cartRL' : 'Cart-tab-item').tap();
   await expect(screen.getByText(/Sauce Labs Backpack/).first()).toBeVisible();
