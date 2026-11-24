@@ -1,4 +1,6 @@
 import { expect, test } from '@mobilewright/test';
+// Web view pages are asserted with Playwright's own expect.
+import { expect as webExpect } from '@playwright/test';
 import { LOCAL_SITE_TEXT, LOCAL_SITE_URL, sauceConnectEnabled } from '../local-site';
 
 // The device opens a site served from this machine (local-site.ts), through the tunnel the config starts.
@@ -11,11 +13,14 @@ test('a site on this machine opens through Sauce Connect', async ({ screen, devi
     await screen.getByTestId('Webview-menu-item').tap();
     await screen.getByRole('textfield').fill(LOCAL_SITE_URL);
     await screen.getByText('Go To Site').tap();
+    await expect(screen.getByText(LOCAL_SITE_TEXT).first()).toBeVisible();
   } else {
     // In Chrome: the Android app's web view trusts only the system's certificates, not the one Sauce Connect
     // re-signs pages with, and the app blocks plain HTTP (it targets Android 12).
     await device.openUrl(LOCAL_SITE_URL);
+    // Read through Chrome's web view: Chrome (seen with 157 and 158) leaves the page's text out of the view hierarchy.
+    const page = await screen.getByWebView().page();
+    await webExpect(page.getByText(LOCAL_SITE_TEXT).first()).toBeVisible();
   }
-  await expect(screen.getByText(LOCAL_SITE_TEXT).first()).toBeVisible();
   await screen.screenshot();
 });

@@ -164,6 +164,8 @@ private device or ask Sauce Labs to allow it. See [public and private devices][p
 - **"The application at path … cannot be installed":** the device's OS is likely older than the app's minimum. Set
   `osVersion`, e.g. `'>=18.6'`.
 - **Web views on iOS:** Safari needs Web Inspector on, and an app's web view must set `WKWebView.isInspectable = true`.
+- **Chrome pages on Android:** Chrome (seen with 157 and 158) leaves the page's content out of the screen's view
+  hierarchy, so `screen.getByText()` doesn't find it. Read the page with `screen.getByWebView().page()` instead.
 
 ## Development
 
