@@ -72,9 +72,10 @@ To test other builds of the apps, set `SAUCE_DEMO_APK` / `SAUCE_DEMO_IPA` (Sauce
 ## Sauce Connect
 
 The Sauce demo suite starts a [Sauce Connect][sauce-connect-5] tunnel and opens a site served from this machine: in the
-app's web view on iOS, in Chrome on Android (the app's Android web view doesn't accept pages through the tunnel). The
-site is a small built-in page at `https://mobilewright.test` (see [`local-site.ts`](sauce-demo-app/local-site.ts)); it
-needs `openssl` for its certificate.
+app's web view on iOS, in Chrome on Android (the app's Android web view doesn't accept pages through the tunnel). On
+Android the test reads the page through Chrome's web view: Chrome (seen with 157 and 158) leaves the page's text out of
+the screen's view hierarchy. The site is a small built-in page at `https://mobilewright.test` (see
+[`local-site.ts`](sauce-demo-app/local-site.ts)); it needs `openssl` for its certificate.
 
 - To open your own local site instead:
   `E2E_LOCAL_SITE=http://localhost:3001 E2E_LOCAL_SITE_TEXT='Some text on the page'`.
